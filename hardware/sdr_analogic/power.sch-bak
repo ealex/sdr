@@ -1,0 +1,710 @@
+EESchema Schematic File Version 4
+EELAYER 30 0
+EELAYER END
+$Descr A4 11693 8268
+encoding utf-8
+Sheet 2 7
+Title ""
+Date ""
+Rev ""
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+Text HLabel 800  850  0    50   Input ~ 0
+VCC
+Wire Wire Line
+	800  850  950  850 
+Wire Wire Line
+	950  850  950  900 
+$Comp
+L power:GND #PWR?
+U 1 1 628F5753
+P 950 1150
+F 0 "#PWR?" H 950 900 50  0001 C CNN
+F 1 "GND" H 955 977 50  0000 C CNN
+F 2 "" H 950 1150 50  0001 C CNN
+F 3 "" H 950 1150 50  0001 C CNN
+	1    950  1150
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	950  1150 950  1100
+$Comp
+L Regulator_Linear:AP1117-33 U?
+U 1 1 628F5B6D
+P 2200 850
+F 0 "U?" H 2200 1092 50  0000 C CNN
+F 1 "AP1117-33" H 2200 1001 50  0000 C CNN
+F 2 "Package_TO_SOT_SMD:SOT-223-3_TabPin2" H 2200 1050 50  0001 C CNN
+F 3 "http://www.diodes.com/datasheets/AP1117.pdf" H 2300 600 50  0001 C CNN
+	1    2200 850 
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C_Small C?
+U 1 1 628F7B8E
+P 1350 1000
+F 0 "C?" H 1442 1046 50  0000 L CNN
+F 1 "100n" H 1442 955 50  0000 L CNN
+F 2 "" H 1350 1000 50  0001 C CNN
+F 3 "~" H 1350 1000 50  0001 C CNN
+	1    1350 1000
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	950  850  1350 850 
+Connection ~ 950  850 
+Wire Wire Line
+	1350 900  1350 850 
+$Comp
+L power:GND #PWR?
+U 1 1 628F8183
+P 1350 1150
+F 0 "#PWR?" H 1350 900 50  0001 C CNN
+F 1 "GND" H 1355 977 50  0000 C CNN
+F 2 "" H 1350 1150 50  0001 C CNN
+F 3 "" H 1350 1150 50  0001 C CNN
+	1    1350 1150
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 628F838F
+P 2200 1200
+F 0 "#PWR?" H 2200 950 50  0001 C CNN
+F 1 "GND" H 2205 1027 50  0000 C CNN
+F 2 "" H 2200 1200 50  0001 C CNN
+F 3 "" H 2200 1200 50  0001 C CNN
+	1    2200 1200
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1350 1100 1350 1150
+Wire Wire Line
+	2200 1150 2200 1200
+Wire Wire Line
+	1350 850  1700 850 
+Connection ~ 1350 850 
+Wire Wire Line
+	1900 850  1700 850 
+Connection ~ 1700 850 
+$Comp
+L Device:C_Small C?
+U 1 1 628F502D
+P 950 1000
+F 0 "C?" H 1042 1046 50  0000 L CNN
+F 1 "100u" H 1042 955 50  0000 L CNN
+F 2 "" H 950 1000 50  0001 C CNN
+F 3 "~" H 950 1000 50  0001 C CNN
+	1    950  1000
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C_Small C?
+U 1 1 628FD3E5
+P 2600 1000
+F 0 "C?" H 2692 1046 50  0000 L CNN
+F 1 "100u" H 2692 955 50  0000 L CNN
+F 2 "" H 2600 1000 50  0001 C CNN
+F 3 "~" H 2600 1000 50  0001 C CNN
+	1    2600 1000
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C_Small C?
+U 1 1 628FD9D4
+P 3000 1000
+F 0 "C?" H 3092 1046 50  0000 L CNN
+F 1 "100n" H 3092 955 50  0000 L CNN
+F 2 "" H 3000 1000 50  0001 C CNN
+F 3 "~" H 3000 1000 50  0001 C CNN
+	1    3000 1000
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:Ferrite_Bead_Small FB?
+U 1 1 628FE04F
+P 3900 850
+F 0 "FB?" V 3663 850 50  0000 C CNN
+F 1 "Ferrite_Bead_Small" V 3754 850 50  0000 C CNN
+F 2 "" V 3830 850 50  0001 C CNN
+F 3 "~" H 3900 850 50  0001 C CNN
+	1    3900 850 
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:C_Small C?
+U 1 1 628FF075
+P 4200 1000
+F 0 "C?" H 4292 1046 50  0000 L CNN
+F 1 "1u" H 4292 955 50  0000 L CNN
+F 2 "" H 4200 1000 50  0001 C CNN
+F 3 "~" H 4200 1000 50  0001 C CNN
+	1    4200 1000
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2500 850  2600 850 
+$Comp
+L power:GND #PWR?
+U 1 1 628FF953
+P 2600 1150
+F 0 "#PWR?" H 2600 900 50  0001 C CNN
+F 1 "GND" H 2605 977 50  0000 C CNN
+F 2 "" H 2600 1150 50  0001 C CNN
+F 3 "" H 2600 1150 50  0001 C CNN
+	1    2600 1150
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 628FFBD9
+P 3000 1150
+F 0 "#PWR?" H 3000 900 50  0001 C CNN
+F 1 "GND" H 3005 977 50  0000 C CNN
+F 2 "" H 3000 1150 50  0001 C CNN
+F 3 "" H 3000 1150 50  0001 C CNN
+	1    3000 1150
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	3000 1150 3000 1100
+Wire Wire Line
+	3000 900  3000 850 
+Connection ~ 3000 850 
+Wire Wire Line
+	3000 850  3350 850 
+Wire Wire Line
+	2600 1150 2600 1100
+Wire Wire Line
+	2600 900  2600 850 
+Connection ~ 2600 850 
+Wire Wire Line
+	2600 850  3000 850 
+Text Label 2650 850  0    50   ~ 0
+3V3_RAW
+Wire Wire Line
+	4000 850  4200 850 
+Wire Wire Line
+	4200 850  4200 900 
+$Comp
+L power:GND #PWR?
+U 1 1 62900F7E
+P 4200 1150
+F 0 "#PWR?" H 4200 900 50  0001 C CNN
+F 1 "GND" H 4205 977 50  0000 C CNN
+F 2 "" H 4200 1150 50  0001 C CNN
+F 3 "" H 4200 1150 50  0001 C CNN
+	1    4200 1150
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4200 1150 4200 1100
+Wire Wire Line
+	4200 850  4700 850 
+Connection ~ 4200 850 
+Text HLabel 4700 850  2    50   Output ~ 0
+CPU_3V3
+$Comp
+L Device:Ferrite_Bead_Small FB?
+U 1 1 629024C7
+P 3900 1700
+F 0 "FB?" V 3663 1700 50  0000 C CNN
+F 1 "Ferrite_Bead_Small" V 3754 1700 50  0000 C CNN
+F 2 "" V 3830 1700 50  0001 C CNN
+F 3 "~" H 3900 1700 50  0001 C CNN
+	1    3900 1700
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:C_Small C?
+U 1 1 62902B07
+P 4200 1850
+F 0 "C?" H 4292 1896 50  0000 L CNN
+F 1 "1u" H 4292 1805 50  0000 L CNN
+F 2 "" H 4200 1850 50  0001 C CNN
+F 3 "~" H 4200 1850 50  0001 C CNN
+	1    4200 1850
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4000 1700 4200 1700
+Wire Wire Line
+	4200 1700 4200 1750
+Wire Wire Line
+	3800 1700 3350 1700
+Wire Wire Line
+	3350 1700 3350 850 
+Connection ~ 3350 850 
+Wire Wire Line
+	3350 850  3800 850 
+$Comp
+L power:GND #PWR?
+U 1 1 62904392
+P 4200 2000
+F 0 "#PWR?" H 4200 1750 50  0001 C CNN
+F 1 "GND" H 4205 1827 50  0000 C CNN
+F 2 "" H 4200 2000 50  0001 C CNN
+F 3 "" H 4200 2000 50  0001 C CNN
+	1    4200 2000
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4200 2000 4200 1950
+Text HLabel 4700 1700 2    50   Output ~ 0
+GEN_3V3
+Wire Wire Line
+	4700 1700 4200 1700
+Connection ~ 4200 1700
+$Comp
+L Device:Ferrite_Bead_Small FB?
+U 1 1 6290765D
+P 3900 2550
+F 0 "FB?" V 3663 2550 50  0000 C CNN
+F 1 "Ferrite_Bead_Small" V 3754 2550 50  0000 C CNN
+F 2 "" V 3830 2550 50  0001 C CNN
+F 3 "~" H 3900 2550 50  0001 C CNN
+	1    3900 2550
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:C_Small C?
+U 1 1 62907A35
+P 4200 2700
+F 0 "C?" H 4292 2746 50  0000 L CNN
+F 1 "1u" H 4292 2655 50  0000 L CNN
+F 2 "" H 4200 2700 50  0001 C CNN
+F 3 "~" H 4200 2700 50  0001 C CNN
+	1    4200 2700
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4000 2550 4200 2550
+Wire Wire Line
+	4200 2550 4200 2600
+Wire Wire Line
+	4200 2550 4700 2550
+Connection ~ 4200 2550
+Text HLabel 4700 2550 2    50   Output ~ 0
+MIXER_3V3
+$Comp
+L power:GND #PWR?
+U 1 1 62908848
+P 4200 2850
+F 0 "#PWR?" H 4200 2600 50  0001 C CNN
+F 1 "GND" H 4205 2677 50  0000 C CNN
+F 2 "" H 4200 2850 50  0001 C CNN
+F 3 "" H 4200 2850 50  0001 C CNN
+	1    4200 2850
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4200 2850 4200 2800
+Wire Wire Line
+	3800 2550 3350 2550
+Wire Wire Line
+	3350 2550 3350 1700
+Connection ~ 3350 1700
+$Comp
+L Device:Ferrite_Bead_Small FB?
+U 1 1 6290ACC5
+P 3900 3450
+F 0 "FB?" V 3663 3450 50  0000 C CNN
+F 1 "Ferrite_Bead_Small" V 3754 3450 50  0000 C CNN
+F 2 "" V 3830 3450 50  0001 C CNN
+F 3 "~" H 3900 3450 50  0001 C CNN
+	1    3900 3450
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:R_Small R?
+U 1 1 6290B4F5
+P 4200 3600
+F 0 "R?" H 4259 3646 50  0000 L CNN
+F 1 "1k" H 4259 3555 50  0000 L CNN
+F 2 "" H 4200 3600 50  0001 C CNN
+F 3 "~" H 4200 3600 50  0001 C CNN
+	1    4200 3600
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:R_Small R?
+U 1 1 6290BBC7
+P 4200 3900
+F 0 "R?" H 4259 3946 50  0000 L CNN
+F 1 "1k" H 4259 3855 50  0000 L CNN
+F 2 "" H 4200 3900 50  0001 C CNN
+F 3 "~" H 4200 3900 50  0001 C CNN
+	1    4200 3900
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 6290BDC4
+P 4200 4050
+F 0 "#PWR?" H 4200 3800 50  0001 C CNN
+F 1 "GND" H 4205 3877 50  0000 C CNN
+F 2 "" H 4200 4050 50  0001 C CNN
+F 3 "" H 4200 4050 50  0001 C CNN
+	1    4200 4050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4200 4050 4200 4000
+Wire Wire Line
+	4200 3700 4200 3750
+Wire Wire Line
+	4000 3450 4200 3450
+Wire Wire Line
+	4200 3450 4200 3500
+$Comp
+L Device:C_Small C?
+U 1 1 6290DAA3
+P 4500 3900
+F 0 "C?" H 4592 3946 50  0000 L CNN
+F 1 "10u" H 4592 3855 50  0000 L CNN
+F 2 "" H 4500 3900 50  0001 C CNN
+F 3 "~" H 4500 3900 50  0001 C CNN
+	1    4500 3900
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 6290EDF0
+P 4500 4050
+F 0 "#PWR?" H 4500 3800 50  0001 C CNN
+F 1 "GND" H 4505 3877 50  0000 C CNN
+F 2 "" H 4500 4050 50  0001 C CNN
+F 3 "" H 4500 4050 50  0001 C CNN
+	1    4500 4050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4500 3800 4500 3750
+Wire Wire Line
+	4500 3750 4200 3750
+Connection ~ 4200 3750
+Wire Wire Line
+	4200 3750 4200 3800
+Wire Wire Line
+	4500 4000 4500 4050
+$Comp
+L Device:C_Small C?
+U 1 1 6290FEDF
+P 4850 3900
+F 0 "C?" H 4942 3946 50  0000 L CNN
+F 1 "100n" H 4942 3855 50  0000 L CNN
+F 2 "" H 4850 3900 50  0001 C CNN
+F 3 "~" H 4850 3900 50  0001 C CNN
+	1    4850 3900
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 629106B1
+P 4850 4050
+F 0 "#PWR?" H 4850 3800 50  0001 C CNN
+F 1 "GND" H 4855 3877 50  0000 C CNN
+F 2 "" H 4850 4050 50  0001 C CNN
+F 3 "" H 4850 4050 50  0001 C CNN
+	1    4850 4050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4500 3750 4850 3750
+Wire Wire Line
+	4850 3750 4850 3800
+Connection ~ 4500 3750
+Wire Wire Line
+	4850 4000 4850 4050
+Text HLabel 5250 3750 2    50   Output ~ 0
+MIXER_BIAS
+Wire Wire Line
+	5250 3750 4850 3750
+Connection ~ 4850 3750
+Wire Wire Line
+	3800 3450 3350 3450
+Wire Wire Line
+	3350 3450 3350 2550
+Connection ~ 3350 2550
+$Comp
+L Device:Ferrite_Bead_Small FB?
+U 1 1 62914302
+P 3900 4650
+F 0 "FB?" V 3663 4650 50  0000 C CNN
+F 1 "Ferrite_Bead_Small" V 3754 4650 50  0000 C CNN
+F 2 "" V 3830 4650 50  0001 C CNN
+F 3 "~" H 3900 4650 50  0001 C CNN
+	1    3900 4650
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	3800 4650 1700 4650
+Wire Wire Line
+	1700 850  1700 4650
+$Comp
+L Device:C_Small C?
+U 1 1 62917111
+P 4200 4800
+F 0 "C?" H 4292 4846 50  0000 L CNN
+F 1 "10u" H 4292 4755 50  0000 L CNN
+F 2 "" H 4200 4800 50  0001 C CNN
+F 3 "~" H 4200 4800 50  0001 C CNN
+	1    4200 4800
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 62917882
+P 4200 4950
+F 0 "#PWR?" H 4200 4700 50  0001 C CNN
+F 1 "GND" H 4205 4777 50  0000 C CNN
+F 2 "" H 4200 4950 50  0001 C CNN
+F 3 "" H 4200 4950 50  0001 C CNN
+	1    4200 4950
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4000 4650 4200 4650
+Wire Wire Line
+	4200 4650 4200 4700
+Wire Wire Line
+	4200 4900 4200 4950
+Wire Wire Line
+	4200 4650 4550 4650
+Connection ~ 4200 4650
+Text HLabel 5250 4650 2    50   Output ~ 0
+AUDIO_VCC
+$Comp
+L Device:C_Small C?
+U 1 1 6291A10A
+P 4550 4800
+F 0 "C?" H 4642 4846 50  0000 L CNN
+F 1 "100n" H 4642 4755 50  0000 L CNN
+F 2 "" H 4550 4800 50  0001 C CNN
+F 3 "~" H 4550 4800 50  0001 C CNN
+	1    4550 4800
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 6291AE8E
+P 4550 4950
+F 0 "#PWR?" H 4550 4700 50  0001 C CNN
+F 1 "GND" H 4555 4777 50  0000 C CNN
+F 2 "" H 4550 4950 50  0001 C CNN
+F 3 "" H 4550 4950 50  0001 C CNN
+	1    4550 4950
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4550 4950 4550 4900
+Wire Wire Line
+	4550 4700 4550 4650
+Connection ~ 4550 4650
+Wire Wire Line
+	4550 4650 5250 4650
+$Comp
+L Device:Ferrite_Bead_Small FB?
+U 1 1 6291C97A
+P 3900 5550
+F 0 "FB?" V 3663 5550 50  0000 C CNN
+F 1 "Ferrite_Bead_Small" V 3754 5550 50  0000 C CNN
+F 2 "" V 3830 5550 50  0001 C CNN
+F 3 "~" H 3900 5550 50  0001 C CNN
+	1    3900 5550
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:R_Small R?
+U 1 1 6291CD4A
+P 4200 5700
+F 0 "R?" H 4259 5746 50  0000 L CNN
+F 1 "1k" H 4259 5655 50  0000 L CNN
+F 2 "" H 4200 5700 50  0001 C CNN
+F 3 "~" H 4200 5700 50  0001 C CNN
+	1    4200 5700
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:R_Small R?
+U 1 1 6291D93E
+P 4200 6000
+F 0 "R?" H 4259 6046 50  0000 L CNN
+F 1 "1k" H 4259 5955 50  0000 L CNN
+F 2 "" H 4200 6000 50  0001 C CNN
+F 3 "~" H 4200 6000 50  0001 C CNN
+	1    4200 6000
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4200 5800 4200 5850
+Connection ~ 4200 5850
+Wire Wire Line
+	4200 5850 4200 5900
+$Comp
+L Device:C_Small C?
+U 1 1 6291F8E0
+P 4500 6000
+F 0 "C?" H 4592 6046 50  0000 L CNN
+F 1 "10u" H 4592 5955 50  0000 L CNN
+F 2 "" H 4500 6000 50  0001 C CNN
+F 3 "~" H 4500 6000 50  0001 C CNN
+	1    4500 6000
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C_Small C?
+U 1 1 6292199E
+P 4850 6000
+F 0 "C?" H 4942 6046 50  0000 L CNN
+F 1 "100n" H 4942 5955 50  0000 L CNN
+F 2 "" H 4850 6000 50  0001 C CNN
+F 3 "~" H 4850 6000 50  0001 C CNN
+	1    4850 6000
+	1    0    0    -1  
+$EndComp
+Text HLabel 5250 5850 2    50   Output ~ 0
+AUDIO_BIAS
+Wire Wire Line
+	4200 5850 4500 5850
+Wire Wire Line
+	4500 5900 4500 5850
+Connection ~ 4500 5850
+Wire Wire Line
+	4500 5850 4850 5850
+$Comp
+L power:GND #PWR?
+U 1 1 629241A9
+P 4200 6150
+F 0 "#PWR?" H 4200 5900 50  0001 C CNN
+F 1 "GND" H 4205 5977 50  0000 C CNN
+F 2 "" H 4200 6150 50  0001 C CNN
+F 3 "" H 4200 6150 50  0001 C CNN
+	1    4200 6150
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 6292460C
+P 4500 6150
+F 0 "#PWR?" H 4500 5900 50  0001 C CNN
+F 1 "GND" H 4505 5977 50  0000 C CNN
+F 2 "" H 4500 6150 50  0001 C CNN
+F 3 "" H 4500 6150 50  0001 C CNN
+	1    4500 6150
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 629247C8
+P 4850 6150
+F 0 "#PWR?" H 4850 5900 50  0001 C CNN
+F 1 "GND" H 4855 5977 50  0000 C CNN
+F 2 "" H 4850 6150 50  0001 C CNN
+F 3 "" H 4850 6150 50  0001 C CNN
+	1    4850 6150
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4850 6150 4850 6100
+Wire Wire Line
+	4850 5900 4850 5850
+Connection ~ 4850 5850
+Wire Wire Line
+	4850 5850 5250 5850
+Wire Wire Line
+	4500 6100 4500 6150
+Wire Wire Line
+	4200 6100 4200 6150
+Wire Wire Line
+	4000 5550 4200 5550
+Wire Wire Line
+	4200 5550 4200 5600
+$Comp
+L Device:Ferrite_Bead_Small FB?
+U 1 1 62AC744B
+P 3900 6750
+F 0 "FB?" V 3663 6750 50  0000 C CNN
+F 1 "Ferrite_Bead_Small" V 3754 6750 50  0000 C CNN
+F 2 "" V 3830 6750 50  0001 C CNN
+F 3 "~" H 3900 6750 50  0001 C CNN
+	1    3900 6750
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	3800 6750 1700 6750
+$Comp
+L Device:C_Small C?
+U 1 1 62AC7456
+P 4200 6900
+F 0 "C?" H 4292 6946 50  0000 L CNN
+F 1 "10u" H 4292 6855 50  0000 L CNN
+F 2 "" H 4200 6900 50  0001 C CNN
+F 3 "~" H 4200 6900 50  0001 C CNN
+	1    4200 6900
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 62AC7460
+P 4200 7050
+F 0 "#PWR?" H 4200 6800 50  0001 C CNN
+F 1 "GND" H 4205 6877 50  0000 C CNN
+F 2 "" H 4200 7050 50  0001 C CNN
+F 3 "" H 4200 7050 50  0001 C CNN
+	1    4200 7050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4000 6750 4200 6750
+Wire Wire Line
+	4200 6750 4200 6800
+Wire Wire Line
+	4200 7000 4200 7050
+Wire Wire Line
+	4200 6750 4550 6750
+Connection ~ 4200 6750
+Text HLabel 5250 6750 2    50   Output ~ 0
+AUDIO_OUT_VCC
+$Comp
+L Device:C_Small C?
+U 1 1 62AC7470
+P 4550 6900
+F 0 "C?" H 4642 6946 50  0000 L CNN
+F 1 "100n" H 4642 6855 50  0000 L CNN
+F 2 "" H 4550 6900 50  0001 C CNN
+F 3 "~" H 4550 6900 50  0001 C CNN
+	1    4550 6900
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 62AC747A
+P 4550 7050
+F 0 "#PWR?" H 4550 6800 50  0001 C CNN
+F 1 "GND" H 4555 6877 50  0000 C CNN
+F 2 "" H 4550 7050 50  0001 C CNN
+F 3 "" H 4550 7050 50  0001 C CNN
+	1    4550 7050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4550 7050 4550 7000
+Wire Wire Line
+	4550 6800 4550 6750
+Connection ~ 4550 6750
+Wire Wire Line
+	4550 6750 5250 6750
+Connection ~ 1700 4650
+Wire Wire Line
+	1700 5550 1700 4650
+Wire Wire Line
+	3800 5550 1700 5550
+Wire Wire Line
+	1700 5550 1700 6750
+Connection ~ 1700 5550
+$EndSCHEMATC
