@@ -159,6 +159,27 @@ volatile int16_t i_s[15], q_s[15];					// Filtered I/Q samples
 volatile int16_t i_dc, q_dc; 						// DC bias for I/Q channel
 volatile int rx_cnt=0;								// Decimation counter
 volatile int16_t audio_gain=0;
+volatile int16_t inputPk;
+volatile int16_t outputPk;
+volatile bool clip;
+
+bool dsp_getClip(void) {
+	bool oldClip = clip;
+	clip = false;
+	return oldClip;
+}
+
+int16_t dsp_getInputMag(void) {
+	int16_t oldInputPk = inputPk;
+	inputPk = 0;
+	return oldInputPk;
+}
+
+int16_t dsp_getOutputMag(void) {
+	int16_t oldOutputPk = outputPk;
+	outputPk = 0;
+	return oldOutputPk;
+}
 
 void set_audio_gain(uint16_t gain) {
 	agc_gain = gain;
@@ -180,7 +201,6 @@ bool rx(void) {
 	int32_t q_accu, i_accu;
 	int16_t qh;
 	uint16_t i;
-	int16_t k;
 
 	// signal rx start
 	gpio_put(15, true);
@@ -188,7 +208,7 @@ bool rx(void) {
 	/*** SAMPLING ***/
 	q_sample = adc_result[0];						// Take last ADC 0 result, connected to Q input
 	i_sample = adc_result[1];						// Take last ADC 1 result, connected to I input
-		
+
 	/*
 	 * Remove DC and store new sample
 	 * IIR filter: dc = a*sample + (1-a)*dc  where a = 1/128
@@ -201,22 +221,11 @@ bool rx(void) {
 	i_dc += i_sample/128 - i_dc/128;
 	i_sample -= i_dc;
 
-	// at this point the data is in signed int16
-
-#if 0 // TODO - something that works on int16 - signed fixed point multiplication insteand of the current way
-	/*
-	 * Shift with AGC feedback from AUDIO GENERATION stage
-	 * Note: bitshift does not work with negative numbers, so need to MPY/DIV
-	 * This behavior in essence is exponential, complementing the logarithmic peak detector
-	 */ 
-	if (agc_gain > 0) {
-		q_sample = q_sample * (agc_gain);
-		i_sample = i_sample * (agc_gain);
-	} else if (agc_gain < 0) {
-		q_sample = q_sample / ((-agc_gain));
-		i_sample = i_sample / ((-agc_gain));
+	if(ABS(i_sample) > inputPk) {
+		inputPk = ABS(i_sample);
 	}
-#endif
+	// at this point the data is in signed int16
+	// and it will be handled as s16
 
 	// shift raw I and Q sample
 	for (i=0; i<14; i++) {
@@ -229,43 +238,43 @@ bool rx(void) {
 	// run the low pass filter on the input data
 	// q_s_raw and i_s_raw are updated at 15625Hz
 
-	//12 bit filter implemetation, unrolled
-	i_accu  = (int16_t) 13*(i_s_raw[0]+i_s_raw[14]);
-	i_accu += (int16_t) 50*(i_s_raw[1]+i_s_raw[13]);
-	i_accu += (int16_t)113*(i_s_raw[2]+i_s_raw[12]);
-	i_accu += (int16_t)197*(i_s_raw[3]+i_s_raw[11]);
-	i_accu += (int16_t)292*(i_s_raw[4]+i_s_raw[10]);
-	i_accu += (int16_t)379*(i_s_raw[5]+i_s_raw[ 9]);
-	i_accu += (int16_t)441*(i_s_raw[6]+i_s_raw[ 8]);
-	i_accu += (int16_t)463*(i_s_raw[7]);
-	i_accu = i_accu/(int16_t)4096;
+	//16 bit filter implemetation, unrolled
+	i_accu  = (int32_t) 223*(int32_t)(i_s_raw[0]+i_s_raw[14]);
+	i_accu += (int32_t) 810*(int32_t)(i_s_raw[1]+i_s_raw[13]);
+	i_accu += (int32_t)1811*(int32_t)(i_s_raw[2]+i_s_raw[12]);
+	i_accu += (int32_t)3162*(int32_t)(i_s_raw[3]+i_s_raw[11]);
+	i_accu += (int32_t)4676*(int32_t)(i_s_raw[4]+i_s_raw[10]);
+	i_accu += (int32_t)6074*(int32_t)(i_s_raw[5]+i_s_raw[ 9]);
+	i_accu += (int32_t)7063*(int32_t)(i_s_raw[6]+i_s_raw[ 8]);
+	i_accu += (int32_t)7420*(int32_t)(i_s_raw[7]);
+	i_accu = i_accu>>16; // drop down to 16 bits
 
-	q_accu  = (int16_t) 13*(q_s_raw[0]+q_s_raw[14]);
-	q_accu += (int16_t) 50*(q_s_raw[1]+q_s_raw[13]);
-	q_accu += (int16_t)113*(q_s_raw[2]+q_s_raw[12]);
-	q_accu += (int16_t)197*(q_s_raw[3]+q_s_raw[11]);
-	q_accu += (int16_t)292*(q_s_raw[4]+q_s_raw[10]);
-	q_accu += (int16_t)379*(q_s_raw[5]+q_s_raw[ 9]);
-	q_accu += (int16_t)441*(q_s_raw[6]+q_s_raw[ 8]);
-	q_accu += (int16_t)463*(q_s_raw[7]);
-	q_accu = q_accu/(int16_t)4096;
+	q_accu  = (int32_t) 223*(int32_t)(q_s_raw[0]+q_s_raw[14]);
+	q_accu += (int32_t) 810*(int32_t)(q_s_raw[1]+q_s_raw[13]);
+	q_accu += (int32_t)1811*(int32_t)(q_s_raw[2]+q_s_raw[12]);
+	q_accu += (int32_t)3162*(int32_t)(q_s_raw[3]+q_s_raw[11]);
+	q_accu += (int32_t)4676*(int32_t)(q_s_raw[4]+q_s_raw[10]);
+	q_accu += (int32_t)6074*(int32_t)(q_s_raw[5]+q_s_raw[ 9]);
+	q_accu += (int32_t)7063*(int32_t)(q_s_raw[6]+q_s_raw[ 8]);
+	q_accu += (int32_t)7420*(int32_t)(q_s_raw[7]);
+	q_accu = q_accu>>16;
 	
 	// shift the filtered samples into the decimated buffer
 	for (i=0; i<14; i++) { // Shift decimated samples
 		q_s[i] = q_s[i+1];
 		i_s[i] = i_s[i+1];
 	}
-	q_s[14] = q_accu;
-	i_s[14] = i_accu;
+	q_s[14] = (int16_t)q_accu;
+	i_s[14] = (int16_t)i_accu;
 	
 #if 1
 	/*** DEMODULATION ***/
 	// compute the Hilbert transform 
-	q_accu  = (int16_t) 372*(q_s[0]-q_s[14]);
-	q_accu += (int16_t) 521*(q_s[2]-q_s[12]);
-	q_accu += (int16_t) 869*(q_s[4]-q_s[10]);
-	q_accu += (int16_t)2607*(q_s[6]-q_s[ 8]);
-	qh = q_accu/(int16_t)4096;
+	q_accu  = (int32_t) 5960*(int32_t)(q_s[0]-q_s[14]);
+	q_accu += (int32_t) 8344*(int32_t)(q_s[2]-q_s[12]);
+	q_accu += (int32_t)13907*(int32_t)(q_s[4]-q_s[10]);
+	q_accu += (int32_t)41721*(int32_t)(q_s[6]-q_s[ 8]);
+	qh = (int16_t)(q_accu>>16);
 
 	// and process the data depending on the selected mode
 	switch (dsp_mode) {
@@ -285,7 +294,16 @@ bool rx(void) {
 			a_sample = MAG(i_s[14], q_s[14]);
 			break;
 		default:
+			a_sample = 0;
 			break;
+	}
+#endif
+
+#if 1 // something that works on int16 - signed fixed point multiplication insteand of the current way
+	if (agc_gain > 0) {
+		a_sample = a_sample * (agc_gain);
+	} else if (agc_gain < 0) {
+		a_sample = a_sample / (-agc_gain);
 	}
 #endif
 
@@ -311,17 +329,26 @@ bool rx(void) {
 	}
 #endif
 
+	if(ABS(a_sample) > outputPk) {
+		outputPk = ABS(a_sample);
+	}
+
 #if 0
 	a_sample = (q_s[0])>>4;
 #else
 	a_sample += DAC_BIAS;							// Add bias level
-#endif
+#endif 
 
-	// Scale and clip output,  
-	if (a_sample > DAC_RANGE)						// Clip to DAC range
+	// compute the output level from the data that's sent out to the PWM
+	
+	// Scale and clip output,
+	if (a_sample > DAC_RANGE) { // limit to the maximum value accepted by the PWM output 
 		a_sample = DAC_RANGE;
-	else if (a_sample<0)
+		clip = true;
+	} else if (a_sample<0) { // it can't go below 0 because it will wrap go 0xFFFF
 		a_sample = 0;
+		clip = true;
+	}
 	// Send to audio DAC output
 	pwm_set_chan_level(dac_audio, PWM_CHAN_A, a_sample);
 
@@ -336,9 +363,6 @@ bool rx(void) {
  * Timing loop, triggered through inter-core fifo 
  */
 void dsp_loop() {
-	uint32_t cmd;
-	uint16_t slice_num;
-
 	fifo_overrun = 0;	
 	fifo_incnt++;
 	
@@ -375,7 +399,7 @@ void dsp_loop() {
 	// For the core1 alarm pool don't use default HWalarm (usually 3) but e.g. 1
 	// Timer callback signals semaphore, while loop blocks on getting it
     while(1) {
-        cmd = multicore_fifo_pop_blocking();		// Wait for fifo output
+        multicore_fifo_pop_blocking();		// Wait for fifo output
 		rx();
  		if (multicore_fifo_rvalid()) {
 			fifo_overrun++;							// Check for missed events
@@ -391,6 +415,7 @@ void dsp_loop() {
  */
 struct repeating_timer dsp_timer;
 bool dsp_callback(struct repeating_timer *t) {
+	(void)t;
 	multicore_fifo_push_blocking(DSP_RX);
 	fifo_incnt++;
 	return true;

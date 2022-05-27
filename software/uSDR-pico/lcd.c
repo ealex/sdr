@@ -60,7 +60,9 @@ void lcd_clear(void) {
  * TODO
  */
 void lcd_curxy(uint8_t x, uint8_t y, bool on) {
-
+    (void)x;
+    (void)y;
+    (void)on;
 }
 
 /**
@@ -68,11 +70,13 @@ void lcd_curxy(uint8_t x, uint8_t y, bool on) {
  * 
  */
 void lcd_putxy(uint8_t x, uint8_t y, uint8_t c) {
-
+    (void)x;
+    (void)y;
+    (void)c;
 }
 
 void lcd_writexy(uint8_t x, uint8_t y, uint8_t *s) {
-	__oledWriteString(&oled, 0, x, y, s, FONT_8x8, (int)0, (int)1);
+	__oledWriteString(&oled, 0, x, y, (char*)s, FONT_8x8, (int)0, (int)1);
 }
 
 void lcd_test(void) {

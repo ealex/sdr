@@ -37,7 +37,6 @@
 #include "hmi.h"
 #include "dsp.h"
 #include "si5351.h"
-#include "relay.h"
 
 /*
  * GPIO assignments
@@ -86,6 +85,8 @@
 #define HMI_E_DEMOD_TYPE_DECREMENT	6
 #define HMI_E_AUDIO_GAIN_INCREMENT  7
 #define HMI_E_AUDIO_GAIN_DECREMENT  8
+#define HMI_E_BAND_INCREMENT		9
+#define HMI_E_BAND_DECREMENT		10
 
 //frequency control
 #define HMI_MAXFREQ		30000000
@@ -102,13 +103,26 @@ uint32_t hmi_freq_step[6] = { 10, 100, 1000, 10000, 100000, 1000000};
 //demodulation step control
 #define HMI_DEMOD_TYPE_MIN 	0
 #define HMI_DEMOD_TYPE_MAX  2
-char hmi_demod_type_list[3][8]= {"USB", "LSB", " AM"};
+char hmi_demod_type_list[HMI_DEMOD_TYPE_MAX+1][4]= {"USB\0", "LSB\0", " AM\0"};
 uint8_t hmi_demod_index = HMI_DEMOD_TYPE_MIN;
 
 //audio gain control
-#define HMI_AUDIO_GAIN_MIN (-10)
-#define HMI_AUDIO_GAIN_MAX (10)
-int16_t hmi_audio_gain;
+#define HMI_AUDIO_GAIN_MIN (-20)
+#define HMI_AUDIO_GAIN_MAX (20)
+int16_t hmi_audio_gain=0;
+
+//RF band control
+#define HMI_BAND_SELECT_MIN	0
+#define HMI_BAND_SELECT_MAX 8
+uint8_t hmi_bandSelect = 0;
+char hmi_band_text[HMI_BAND_SELECT_MAX+1][17]= { 
+	"80m 3.50-4.00   \0", "40m 7.00-7.30   \0", "40m 10.10-10.15 \0", "20m 14.00-14.35 \0", 
+	"17m 18.06-18.17 \0", "15m 21.00-21.45 \0", "12m 24.80-25.00 \0", "10m 28.00-29.70 \0"
+};
+uint32_t hmi_band_startFreq[HMI_BAND_SELECT_MAX+1] = { 
+	 3500000UL,  7000000UL, 10100000UL, 14000000UL,
+	18060000UL, 21000000UL, 24800000UL, 28000000UL
+};
 
 // set to true when it's time to refresh
 bool hmi_update;
@@ -122,6 +136,15 @@ bool hmi_update;
 #ifndef MAX
 	#define MAX(x, y)        ((x)>(y)?(x):(y))  // Get max value
 #endif
+
+//local functions
+void hmi_bandUpdate(void);
+void hmi_handler(uint8_t event);
+void hmi_gpio_callback(uint gpio, uint32_t events);
+void hmi_evaluate(void);
+bool hmi_timer_callback(struct repeating_timer *t);
+void hmi_init(void);
+
 
 /*
  * HMI State Machine,
@@ -151,6 +174,7 @@ void hmi_handler(uint8_t event) {
 		}
 	}
 
+	// demodulation type control
 	if(HMI_E_DEMOD_TYPE_INCREMENT==event) {
 		if(HMI_DEMOD_TYPE_MAX>hmi_demod_index) {
 			hmi_demod_index ++;
@@ -163,6 +187,7 @@ void hmi_handler(uint8_t event) {
 		}
 	}
 
+	// audio gain control
 	if(HMI_E_AUDIO_GAIN_INCREMENT==event) {
 		if(HMI_AUDIO_GAIN_MAX>hmi_audio_gain) {
 			hmi_audio_gain += 1;
@@ -175,10 +200,29 @@ void hmi_handler(uint8_t event) {
 	}
 
 
+	//frequency band select
+	if(HMI_E_BAND_INCREMENT==event) {
+		if(HMI_BAND_SELECT_MAX>hmi_bandSelect) {
+			hmi_bandSelect += 1;
+		}
+		hmi_bandUpdate();
+	}
+	if(HMI_E_BAND_DECREMENT==event) {
+		if(hmi_bandSelect > HMI_BAND_SELECT_MIN) {
+			hmi_bandSelect -= 1;
+		}
+		hmi_bandUpdate();
+	}
+
+
 	//trigger a screen update
 	if(HMI_E_NOEVENT!=event) {
 		hmi_update = true;
 	}
+}
+
+void hmi_bandUpdate(void) {
+	hmi_freq = hmi_band_startFreq[hmi_bandSelect];
 }
 
 /*
@@ -188,7 +232,7 @@ void hmi_handler(uint8_t event) {
  * AUX0 + encoder increment / decrement => freq step change
  * AUX1 + encoder increment / decrement => demodulator change 
  */
-void hmi_callback(uint gpio, uint32_t events) {
+void hmi_gpio_callback(uint gpio, uint32_t events) {
 	uint8_t evt=HMI_E_NOEVENT;
 
 	// all these actions take place when the encoder is used
@@ -218,12 +262,23 @@ void hmi_callback(uint gpio, uint32_t events) {
 			}
 		}
 
+		// if AUX2 is pressed
 		if(false==gpio_get(GP_AUX_2)) {
 			if(HMI_E_INCREMENT==evt) {
 				evt = HMI_E_AUDIO_GAIN_INCREMENT;
 			}
 			if(HMI_E_DECREMENT==evt) {
 				evt = HMI_E_AUDIO_GAIN_DECREMENT;
+			}
+		}
+
+		// if AUX3 is pressed
+		if(false==gpio_get(GP_AUX_3)) {
+			if(HMI_E_INCREMENT==evt) {
+				evt = HMI_E_BAND_INCREMENT;
+			}
+			if(HMI_E_DECREMENT==evt) {
+				evt = HMI_E_BAND_DECREMENT;
 			}
 		}
 	}
@@ -241,8 +296,8 @@ void hmi_evaluate(void) {
 	// main update routine
 	if(true == hmi_update) { // update display only when required
 		//line 0: current frequency
-		sprintf(s, "F:%05d.%03dHz", hmi_freq/1000, hmi_freq%1000);
-		lcd_writexy(0,0,s);
+		sprintf(s, "F:%05u.%03uHz", (uint16_t)(hmi_freq/1000), (uint16_t)(hmi_freq%1000));
+		lcd_writexy(0,0, (uint8_t *)s);
 
 		//line 1: pointer to the curret frequency update step		
 		switch(hmi_freq_step_index) {
@@ -268,15 +323,25 @@ void hmi_evaluate(void) {
 				sprintf(s, "ERROR!!!");
 				break;
 		}
-		lcd_writexy(0,1,s);
+		lcd_writexy(0,1, (uint8_t *)s);
 
 		//line 2 : demodulation mode
 		sprintf(s, "Demod: %s", hmi_demod_type_list[hmi_demod_index]);
-		lcd_writexy(0,2,s);
+		lcd_writexy(0,2, (uint8_t *)s);
 
 		//line 3 : audio gain
 		sprintf(s,"Ag: %04d", hmi_audio_gain);
-		lcd_writexy(0,3,s);
+		lcd_writexy(0,3, (uint8_t *)s);
+
+		// line 4: inputMag
+		sprintf(s,"A:%04d D:%04d %c", dsp_getInputMag(),
+			dsp_getOutputMag(), dsp_getClip()?'*':' ');
+		lcd_writexy(0,4, (uint8_t *)s);
+
+		// line 5: rf band
+		sprintf(s, "%s", hmi_band_text[hmi_bandSelect]);
+		lcd_writexy(0,5, (uint8_t *)s);
+
 
 		// Set parameters corresponding to latest entered option value
 		SI_SETFREQ(0, hmi_freq);
@@ -288,6 +353,14 @@ void hmi_evaluate(void) {
 		// UI update done, clear the flag
 		hmi_update = false;
 	}
+}
+
+// this timer will trigger a periodic UI refresh
+struct repeating_timer hmi_timer;
+bool hmi_timer_callback(struct repeating_timer *t) {
+	(void)t;
+	hmi_update = true;
+	return true;
 }
 
 
@@ -322,10 +395,12 @@ void hmi_init(void) {
 	//gpio_set_irq_enabled(GP_AUX_3, GPIO_IRQ_EDGE_ALL, true);
 
 	// Set callback, one for all GPIO, not sure about correctness!
-	gpio_set_irq_enabled_with_callback(GP_ENC_A, GPIO_IRQ_EDGE_ALL, true, hmi_callback);
+	gpio_set_irq_enabled_with_callback(GP_ENC_A, GPIO_IRQ_EDGE_ALL, true, hmi_gpio_callback);
 		
 	// Initialize LCD and set VFO
-	hmi_freq = 14000000UL;							// Initial frequency
+	//hmi_freq = 14000000UL;							// Initial frequency
+	hmi_bandSelect = 3;
+	hmi_bandUpdate();
 	hmi_freq_step_index = 1;						// initial control step
 	hmi_demod_index = 0;							// start with USB demodulation
 	hmi_audio_gain = 0;
@@ -335,7 +410,9 @@ void hmi_init(void) {
 	dsp_setmode(hmi_demod_index);	// initial USB demodulation
 	set_audio_gain(hmi_audio_gain);
 	//dsp_setagc(hmi_sub[HMI_S_AGC]);	TODO	
-	hmi_update = true;
+	//hmi_update = true;
+
+	add_repeating_timer_us(-(1000000), hmi_timer_callback, NULL, &hmi_timer);
 }
 
 /*

@@ -26,7 +26,6 @@
 #include "lcd.h"
 #include "dsp.h"
 #include "si5351.h"
-#include "relay.h"
 
 #define LED_MS		1000
 #define LOOP_MS		100
@@ -43,6 +42,7 @@
  */
 struct repeating_timer led_timer;
 bool led_callback(struct repeating_timer *t) {
+	(void)t;
 	static bool led_state;
 	
 	gpio_put(PICO_DEFAULT_LED_PIN, led_state);
@@ -58,6 +58,7 @@ bool led_callback(struct repeating_timer *t) {
 semaphore_t loop_sem;
 struct repeating_timer loop_timer;
 bool loop_callback(struct repeating_timer *t) {
+	(void)t;
 	sem_release(&loop_sem);
 	return(true);
 }
@@ -97,7 +98,6 @@ int main() {
 	/* Initialize units */
 	si_init();										// VFO control unit
 	dsp_init();										// Signal processing unit
-	relay_init();
 	lcd_init();										// LCD output unit
 	hmi_init();										// HMI user inputs
 	
