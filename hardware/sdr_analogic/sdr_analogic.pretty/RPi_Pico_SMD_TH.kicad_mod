@@ -1,4 +1,4 @@
-(module RPi_Pico_SMD_TH (layer F.Cu) (tedit 62753D5E)
+(module RPi_Pico_SMD_TH (layer F.Cu) (tedit 628F7B54)
   (descr "Through hole straight pin header, 2x20, 2.54mm pitch, double rows")
   (tags "Through hole pin header THT 2x20 2.54mm double row")
   (fp_text reference REF** (at 0 0) (layer F.SilkS)
