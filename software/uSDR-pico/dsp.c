@@ -64,6 +64,7 @@
  *	32us		31250Hz
  *	64us		15625Hz
  */
+//#define DSP_USE_OUTPUT_FILTER
 //#define DSP_USE_WEAVER		// demodulation mode: WEAVER or HILBERT
 #ifdef DSP_USE_WEAVER
 	// the weaver demodulation runs with a 31250Hz clock
@@ -72,14 +73,15 @@
 	// the weaver multiplicatio runs in 4 steps -> 1562.5 center frequency
 	// the weaver output filter runs at 6250Hz
 	#define DSP_US		32
-	#define DSP_DECIMATION_STEPS	5 	// used to trigger the weaver loop
-	volatile uint8_t decimationCounter=0;
-	volatile uint8_t weaverProcessStep=0; // used to keep track of the current multiplication step
+	volatile uint8_t sineIndex;
 
 	//31250Hz sample rate
 	int32_t in_filter[8]  = {-69, 112, 608, 1478, 2634, 3832, 4742, 5082};
 	int32_t out_filter[8] = {1176, 1568, 1955, 2315, 2621, 2857, 3005, 3056};
-	void dsp_weaverDemodulator((int16_t)i_accu, (int16_t)q_accu);
+	int16_t sine_table[20] = {0, 10125, 19260, 26509, 31163, 32767, 31163, 26509, 19260,
+			10125, 0, -10126, -19261, -26510, -31164, -32768, -31164, -26510, -19261, -10126
+		};
+	void dsp_weaverDemodulator(int16_t i_accu, int16_t q_accu);
 #else
 	// the phase-shift demodulation is running with a 15625Hz clock
 	#define DSP_US 		64
@@ -242,13 +244,14 @@ bool repeating_timer_callback_core_1_rx(struct repeating_timer *t) {
 	dsp_hilbertDemodulation((int16_t)i_accu, (int16_t)q_accu);
 #endif
 
+	int16_t audio_out;
+#ifdef DSP_USE_OUTPUT_FILTER
 	// output filter
 	for (i=0; i<14; i++) {
 		audio_s[i] = audio_s[i+1];
 	}
 	audio_s[14] = a_sample;
-
-	int16_t audio_out;
+		
 	a_accu  = (int32_t)out_filter[0]*(int32_t)(audio_s[ 0]+audio_s[14]);
 	a_accu += (int32_t)out_filter[1]*(int32_t)(audio_s[ 1]+audio_s[13]);
 	a_accu += (int32_t)out_filter[2]*(int32_t)(audio_s[ 2]+audio_s[12]);
@@ -258,6 +261,9 @@ bool repeating_timer_callback_core_1_rx(struct repeating_timer *t) {
 	a_accu += (int32_t)out_filter[6]*(int32_t)(audio_s[ 6]+audio_s[ 8]);
 	a_accu += (int32_t)out_filter[7]*(int32_t)(audio_s[ 7]);
 	audio_out = (int16_t)(a_accu>>16); // drop down to 16 bits
+#else
+	audio_out = a_sample;
+#endif
 
 	// some kind of gain on the final audio data
 	// something that works on int16 - signed fixed point multiplication insteand of the current way
@@ -272,9 +278,7 @@ bool repeating_timer_callback_core_1_rx(struct repeating_timer *t) {
 		outputPk = ABS(audio_out);
 	}
 
-	// compute the output level from the data that's sent out to the PWM
-	
-	// Scale and clip output
+	// Scale and clip output 
 	audio_out += DAC_BIAS;
 	if (audio_out > DAC_RANGE) { // limit to the maximum value accepted by the PWM output 
 		audio_out = DAC_RANGE;
@@ -292,45 +296,33 @@ bool repeating_timer_callback_core_1_rx(struct repeating_timer *t) {
 }
 
 #ifdef DSP_USE_WEAVER
-void dsp_weaverDemodulator((int16_t)i_accu, (int16_t)q_accu) {
-	// run the weaver code at 31250Hz/5 = 6250Hz
-	if(0==decimationCounter) {
-		gpio_put(15, true);
-		// AM demodulation, early exit
-		if(2==dsp_mode) {		
-			a_sample = MAG((int16_t)i_accu, (int16_t)q_accu);
-		} else {
-			// a_sample = (int16_t)i_accu;
-			//this is the normal weaver demodulation
-			switch(weaverProcessStep) {
-				case 0:
-					a_sample = (int16_t)( 1)*(int16_t)i_accu + (int16_t)(-1)*(int16_t)q_accu;
-					break;
-				case 1:
-					a_sample = (int16_t)( 1)*(int16_t)i_accu + (int16_t)( 1)*(int16_t)q_accu;
-					break;
-				case 2:
-					a_sample = (int16_t)(-1)*(int16_t)i_accu + (int16_t)( 1)*(int16_t)q_accu;
-					break;
-				case 3:
-					a_sample = (int16_t)(-1)*(int16_t)i_accu + (int16_t)(-1)*(int16_t)q_accu;
-					break;
-				default:
-					weaverProcessStep = 0;
-					break;
-			}
-		}
+void dsp_weaverDemodulator(int16_t i_accu, int16_t q_accu) {
+	// use a sine-table with 20 steps => 1562.5Hz
 
-		//go to the next quadrature multiplicatio step
-		weaverProcessStep++;
-		weaverProcessStep = (uint8_t)weaverProcessStep%(uint8_t)4;
+	// in phase multiplier
+	int16_t i = ((int32_t)i_accu*(int32_t)sine_table[sineIndex])>>16;
 
-		//TODO : filter weaver output		
-	} else {
-		//a_sample = 0; 
+	// quadrature multiplier - 90 degrees ahead
+	int16_t q = ((int32_t)q_accu*(int32_t)sine_table[(sineIndex+5)%20])>>16;
+
+	switch (dsp_mode) {
+		case 0: //USB
+			a_sample = i+q;
+			break;
+		case 1: //LSB
+			a_sample = i-q;
+			break;
+		case 2: //AM
+			// AM demodulate: sqrt(sqr(i)+sqr(q))
+			a_sample = MAG(i_accu, q_accu);
+			break;
+		default:
+			a_sample = 0;
+			break;
 	}
-	decimationCounter++;
-	decimationCounter = decimationCounter % DSP_DECIMATION_STEPS;
+	
+	sineIndex ++;
+	sineIndex = sineIndex%20;
 }
 #else
 void dsp_hilbertDemodulation(int16_t i_accu, int16_t q_accu) {
