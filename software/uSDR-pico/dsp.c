@@ -35,12 +35,12 @@
 #include "hardware/timer.h"
 #include "hardware/clocks.h"
 #include "hardware/structs/bus_ctrl.h"
-
-#define ADC0_IRQ_FIFO 		22		// FIFO IRQ number
-#define GP_PTT				15		// PTT pin 20 (GPIO 15)
-
 #include "dsp.h"
 #include "hmi.h"
+
+
+#define ADC0_IRQ_FIFO 		22		// FIFO IRQ number
+
 
 
 /* 
@@ -64,43 +64,40 @@
  *	32us		31250Hz
  *	64us		15625Hz
  */
-#define DSP_US		64
-#define DSP_TX		1
-#define DSP_RX		2
+//#define DSP_USE_WEAVER		// demodulation mode: WEAVER or HILBERT
+#ifdef DSP_USE_WEAVER
+	// the weaver demodulation runs with a 31250Hz clock
+	// the input lowpass filter runs with 31250Hz rate
+	// the demodulation code is called with 6250Hz rate - decimation 5
+	// the weaver multiplicatio runs in 4 steps -> 1562.5 center frequency
+	// the weaver output filter runs at 6250Hz
+	#define DSP_US		32
+	#define DSP_DECIMATION_STEPS	5 	// used to trigger the weaver loop
+	volatile uint8_t decimationCounter=0;
+	volatile uint8_t weaverProcessStep=0; // used to keep track of the current multiplication step
+
+	//31250Hz sample rate
+	int32_t in_filter[8]  = {-69, 112, 608, 1478, 2634, 3832, 4742, 5082};
+	int32_t out_filter[8] = {1176, 1568, 1955, 2315, 2621, 2857, 3005, 3056};
+	void dsp_weaverDemodulator((int16_t)i_accu, (int16_t)q_accu);
+#else
+	// the phase-shift demodulation is running with a 15625Hz clock
+	#define DSP_US 		64
+	//15625Hz sample rate
+	int32_t in_filter[8]  = {-86, 18, 488, 1404, 2669, 3998, 5013, 5394 };
+	int32_t out_filter[8] = {-42, 119, 619, 1498, 2648, 3818, 4696, 5022 };
+	void dsp_hilbertDemodulation(int16_t i_accu, int16_t q_accu);
+#endif
+
+// Some macro's
+// See Alpha Max plus Beta Min algorithm for MAG (vector length)
+#define ABS(x)		((x)<0?-(x):(x))
+#define MAG(i,q)	(ABS(i)>ABS(q) ? ABS(i)+((3*ABS(q))>>3) : ABS(q)+((3*ABS(i))>>3))
+
+// reference for the audio output PWM
+volatile uint16_t dac_audio;
 
 
-/*
- * AGC reference level is log2(0x40) = 6, where 0x40 is the MSB of half DAC_RANGE
- * 1/AGC_DECAY and 1/AGC_ATTACK are multipliers before agc_gain value integrator
- * These values should ultimately be set by the HMI.
- * The time it takes to a gain change is the ( (Set time)/(signal delta) ) / samplerate
- * So when delta is 1, and attack is 64, the time is 64/15625 = 4msec (fast attack)
- * The decay time is about 100x this value
- * Slow attack would be about 4096
- */
-#define AGC_REF		10
-#define AGC_DECAY	8192
-#define AGC_FAST	64
-#define AGC_SLOW	4096
-#define AGC_OFF		32766
-volatile uint16_t agc_decay  = AGC_OFF;
-volatile uint16_t agc_attack = AGC_OFF;
-void dsp_setagc(int agc) {
-	switch(agc) {
-		case 1:		//SLOW, for values see hmi.c
-			agc_attack = AGC_SLOW;
-			agc_decay  = AGC_DECAY;
-			break;
-		case 2:		//FAST
-			agc_attack = AGC_FAST;
-			agc_decay  = AGC_DECAY;
-			break;
-		default: 	//OFF
-			agc_attack = AGC_OFF;
-			agc_decay  = AGC_OFF;
-			break;
-	}
-}
 
 
 // MODE is modulation/demodulation 
@@ -109,17 +106,6 @@ volatile uint16_t dsp_mode;				// For values see hmi.c, assume {USB,LSB,AM,CW}
 void dsp_setmode(int mode) {
 	dsp_mode = (uint16_t)mode;
 }
-
-
-volatile uint16_t dac_audio;
-volatile uint32_t fifo_overrun, fifo_incnt;
-
-// Some macro's
-// See Alpha Max plus Beta Min algorithm for MAG (vector length)
-#define ABS(x)		((x)<0?-(x):(x))
-#define MAG(i,q)	(ABS(i)>ABS(q) ? ABS(i)+((3*ABS(q))>>3) : ABS(q)+((3*ABS(i))>>3))
-
-
 
 // CORE1: 
 // ADC IRQ handler.
@@ -143,14 +129,13 @@ void adcfifo_handler(void) {
  * No ADC sample interleaving, read both I and Q channels.
  * The delay is only 2us per conversion, which causes less distortion than interpolation of samples.
  */
+volatile int16_t a_sample=0;
 volatile int16_t i_s_raw[15], q_s_raw[15];			// Raw I/Q samples minus DC bias
-volatile uint16_t peak=0;							// Peak detector running value
 volatile int16_t agc_gain=0;	       				// AGC gain (left-shift value)
-volatile int16_t agc_accu=0;	       				// Log peak level integrator
-volatile int16_t i_s[15], q_s[15];					// Filtered I/Q samples
+volatile int16_t i_s[15], q_s[15];					// Filtered I/Q samples, hilbert transform
 volatile int16_t i_dc, q_dc; 						// DC bias for I/Q channel
-volatile int rx_cnt=0;								// Decimation counter
 volatile int16_t audio_gain=0;
+volatile int16_t audio_s[15];						// output low pass filter
 volatile int16_t inputPk;
 volatile int16_t outputPk;
 volatile bool clip;
@@ -173,31 +158,29 @@ int16_t dsp_getOutputMag(void) {
 	return oldOutputPk;
 }
 
-void set_audio_gain(uint16_t gain) {
+void dsp_set_audio_gain(uint16_t gain) {
 	agc_gain = gain;
 }
-int16_t get_i_dc(void) {
+int16_t dsp_get_i_dc(void) {
 	return i_dc;
 }
 
-int16_t get_q_dc(void) {
+int16_t dsp_get_q_dc(void) {
 	return q_dc;
 }
 
-int16_t get_agc_gain(void) {
+int16_t dsp_get_agc_gain(void) {
 	return agc_gain;
 }
 
+// this functio is the RX loop
 bool repeating_timer_callback_core_1_rx(struct repeating_timer *t) {
-	int16_t q_sample, i_sample, a_sample;
-	int32_t q_accu, i_accu;
-	int16_t qh;
 	uint16_t i;
-
+	int16_t q_sample, i_sample;
+	int32_t q_accu, i_accu, a_accu;
 	(void)t;
 
-	// signal rx start
-	gpio_put(15, true);	
+	//gpio_put(15, true);
 
 	/*** SAMPLING ***/
 	q_sample = adc_result[0];						// Take last ADC 0 result, connected to Q input
@@ -225,47 +208,144 @@ bool repeating_timer_callback_core_1_rx(struct repeating_timer *t) {
 	}
 	i_s_raw[14] = i_sample;
 	q_s_raw[14] = q_sample;
-	
-	// run the low pass filter on the input data
-	// q_s_raw and i_s_raw are updated at 15625Hz
 
-	//16 bit filter implemetation, unrolled
-	i_accu  = (int32_t) -86*(int32_t)(i_s_raw[ 0]+i_s_raw[14]);
-	i_accu += (int32_t)  18*(int32_t)(i_s_raw[ 1]+i_s_raw[13]);
-	i_accu += (int32_t) 488*(int32_t)(i_s_raw[ 2]+i_s_raw[12]);
-	i_accu += (int32_t)1404*(int32_t)(i_s_raw[ 3]+i_s_raw[11]);
-	i_accu += (int32_t)2669*(int32_t)(i_s_raw[ 4]+i_s_raw[10]);
-	i_accu += (int32_t)3998*(int32_t)(i_s_raw[ 5]+i_s_raw[ 9]);
-	i_accu += (int32_t)5013*(int32_t)(i_s_raw[ 6]+i_s_raw[ 8]);
-	i_accu += (int32_t)5394*(int32_t)(i_s_raw[ 7]);
+	//16 bit LPF implemetation
+	i_accu  = (int32_t)in_filter[0]*(int32_t)(i_s_raw[ 0]+i_s_raw[14]);
+	i_accu += (int32_t)in_filter[1]*(int32_t)(i_s_raw[ 1]+i_s_raw[13]);
+	i_accu += (int32_t)in_filter[2]*(int32_t)(i_s_raw[ 2]+i_s_raw[12]);
+	i_accu += (int32_t)in_filter[3]*(int32_t)(i_s_raw[ 3]+i_s_raw[11]);
+	i_accu += (int32_t)in_filter[4]*(int32_t)(i_s_raw[ 4]+i_s_raw[10]);
+	i_accu += (int32_t)in_filter[5]*(int32_t)(i_s_raw[ 5]+i_s_raw[ 9]);
+	i_accu += (int32_t)in_filter[6]*(int32_t)(i_s_raw[ 6]+i_s_raw[ 8]);
+	i_accu += (int32_t)in_filter[7]*(int32_t)(i_s_raw[ 7]);
 	i_accu = i_accu>>16; // drop down to 16 bits
-	if(ABS(i_accu) > inputPk) {
-		inputPk = ABS(i_accu);
+	if(ABS((int16_t)i_accu) > inputPk) {
+		inputPk = ABS((int16_t)i_accu);
 	}
 
-	q_accu  = (int32_t) -86*(int32_t)(q_s_raw[ 0]+q_s_raw[14]);
-	q_accu += (int32_t)  18*(int32_t)(q_s_raw[ 1]+q_s_raw[13]);
-	q_accu += (int32_t) 488*(int32_t)(q_s_raw[ 2]+q_s_raw[12]);
-	q_accu += (int32_t)1404*(int32_t)(q_s_raw[ 3]+q_s_raw[11]);
-	q_accu += (int32_t)2669*(int32_t)(q_s_raw[ 4]+q_s_raw[10]);
-	q_accu += (int32_t)3998*(int32_t)(q_s_raw[ 5]+q_s_raw[ 9]);
-	q_accu += (int32_t)5013*(int32_t)(q_s_raw[ 6]+q_s_raw[ 8]);
-	q_accu += (int32_t)5394*(int32_t)(q_s_raw[ 7]);
+	q_accu  = (int32_t)in_filter[0]*(int32_t)(q_s_raw[ 0]+q_s_raw[14]);
+	q_accu += (int32_t)in_filter[1]*(int32_t)(q_s_raw[ 1]+q_s_raw[13]);
+	q_accu += (int32_t)in_filter[2]*(int32_t)(q_s_raw[ 2]+q_s_raw[12]);
+	q_accu += (int32_t)in_filter[3]*(int32_t)(q_s_raw[ 3]+q_s_raw[11]);
+	q_accu += (int32_t)in_filter[4]*(int32_t)(q_s_raw[ 4]+q_s_raw[10]);
+	q_accu += (int32_t)in_filter[5]*(int32_t)(q_s_raw[ 5]+q_s_raw[ 9]);
+	q_accu += (int32_t)in_filter[6]*(int32_t)(q_s_raw[ 6]+q_s_raw[ 8]);
+	q_accu += (int32_t)in_filter[7]*(int32_t)(q_s_raw[ 7]);
 	q_accu = q_accu>>16;
-	if(ABS(q_accu) > inputPk) {
-		inputPk = ABS(q_accu);
+	if(ABS((int16_t)q_accu) > inputPk) {
+		inputPk = ABS((int16_t)q_accu);
 	}
+
+#ifdef DSP_USE_WEAVER
+	dsp_weaverDemodulator((int16_t)i_accu, (int16_t)q_accu);
+#else
+	dsp_hilbertDemodulation((int16_t)i_accu, (int16_t)q_accu);
+#endif
+
+	// output filter
+	for (i=0; i<14; i++) {
+		audio_s[i] = audio_s[i+1];
+	}
+	audio_s[14] = a_sample;
+
+	int16_t audio_out;
+	a_accu  = (int32_t)out_filter[0]*(int32_t)(audio_s[ 0]+audio_s[14]);
+	a_accu += (int32_t)out_filter[1]*(int32_t)(audio_s[ 1]+audio_s[13]);
+	a_accu += (int32_t)out_filter[2]*(int32_t)(audio_s[ 2]+audio_s[12]);
+	a_accu += (int32_t)out_filter[3]*(int32_t)(audio_s[ 3]+audio_s[11]);
+	a_accu += (int32_t)out_filter[4]*(int32_t)(audio_s[ 4]+audio_s[10]);
+	a_accu += (int32_t)out_filter[5]*(int32_t)(audio_s[ 5]+audio_s[ 9]);
+	a_accu += (int32_t)out_filter[6]*(int32_t)(audio_s[ 6]+audio_s[ 8]);
+	a_accu += (int32_t)out_filter[7]*(int32_t)(audio_s[ 7]);
+	audio_out = (int16_t)(a_accu>>16); // drop down to 16 bits
+
+	// some kind of gain on the final audio data
+	// something that works on int16 - signed fixed point multiplication insteand of the current way
+	if (agc_gain > 0) {
+		audio_out = audio_out * (agc_gain);
+	} else if (agc_gain < 0) {
+		audio_out = audio_out / (-agc_gain);
+	}
+
+	/*** AUDIO GENERATION ***/
+	if(ABS(audio_out) > outputPk) {
+		outputPk = ABS(audio_out);
+	}
+
+	// compute the output level from the data that's sent out to the PWM
 	
-	// shift the filtered samples into the decimated buffer
-	for (i=0; i<14; i++) { // Shift decimated samples
+	// Scale and clip output
+	audio_out += DAC_BIAS;
+	if (audio_out > DAC_RANGE) { // limit to the maximum value accepted by the PWM output 
+		audio_out = DAC_RANGE;
+		clip = true;
+	} else if (audio_out<0) { // it can't go below 0 because it will wrap go 0xFFFF
+		audio_out = 0;
+		clip = true;
+	}
+	// Send to audio DAC output
+	pwm_set_chan_level(dac_audio, PWM_CHAN_A, audio_out);
+
+	// signal loop end
+	gpio_put(15, false);
+	return true;
+}
+
+#ifdef DSP_USE_WEAVER
+void dsp_weaverDemodulator((int16_t)i_accu, (int16_t)q_accu) {
+	// run the weaver code at 31250Hz/5 = 6250Hz
+	if(0==decimationCounter) {
+		gpio_put(15, true);
+		// AM demodulation, early exit
+		if(2==dsp_mode) {		
+			a_sample = MAG((int16_t)i_accu, (int16_t)q_accu);
+		} else {
+			// a_sample = (int16_t)i_accu;
+			//this is the normal weaver demodulation
+			switch(weaverProcessStep) {
+				case 0:
+					a_sample = (int16_t)( 1)*(int16_t)i_accu + (int16_t)(-1)*(int16_t)q_accu;
+					break;
+				case 1:
+					a_sample = (int16_t)( 1)*(int16_t)i_accu + (int16_t)( 1)*(int16_t)q_accu;
+					break;
+				case 2:
+					a_sample = (int16_t)(-1)*(int16_t)i_accu + (int16_t)( 1)*(int16_t)q_accu;
+					break;
+				case 3:
+					a_sample = (int16_t)(-1)*(int16_t)i_accu + (int16_t)(-1)*(int16_t)q_accu;
+					break;
+				default:
+					weaverProcessStep = 0;
+					break;
+			}
+		}
+
+		//go to the next quadrature multiplicatio step
+		weaverProcessStep++;
+		weaverProcessStep = (uint8_t)weaverProcessStep%(uint8_t)4;
+
+		//TODO : filter weaver output		
+	} else {
+		//a_sample = 0; 
+	}
+	decimationCounter++;
+	decimationCounter = decimationCounter % DSP_DECIMATION_STEPS;
+}
+#else
+void dsp_hilbertDemodulation(int16_t i_accu, int16_t q_accu) {
+	uint8_t i;
+	int16_t qh;
+
+	// shift the filtered samples into the demodulation buffer
+	// this is used for the hilbert transformation / delay
+	for (i=0; i<14; i++) {
 		i_s[i] = i_s[i+1];
 		q_s[i] = q_s[i+1];
 	}
 	i_s[14] = (int16_t)i_accu;
 	q_s[14] = (int16_t)q_accu;
-	
 
-	/*** DEMODULATION ***/
 	// compute the Hilbert transform 
 	q_accu  = (int32_t) 2980*(int32_t)(q_s[ 0]-q_s[14]);
 	q_accu += (int32_t) 4172*(int32_t)(q_s[ 2]-q_s[12]);
@@ -273,7 +353,6 @@ bool repeating_timer_callback_core_1_rx(struct repeating_timer *t) {
 	q_accu += (int32_t)20860*(int32_t)(q_s[ 6]-q_s[ 8]);
 	qh = (int16_t)(q_accu>>16);
 
-	// and process the data depending on the selected mode
 	switch (dsp_mode) {
 		case 0: //USB
 			// USB demodulate: I[15] - Qh,
@@ -294,58 +373,22 @@ bool repeating_timer_callback_core_1_rx(struct repeating_timer *t) {
 			a_sample = 0;
 			break;
 	}
-
-
-#if 1 // something that works on int16 - signed fixed point multiplication insteand of the current way
-	if (agc_gain > 0) {
-		a_sample = a_sample * (agc_gain);
-	} else if (agc_gain < 0) {
-		a_sample = a_sample / (-agc_gain);
-	}
-#endif
-
-	/*** AUDIO GENERATION ***/
-	if(ABS(a_sample) > outputPk) {
-		outputPk = ABS(a_sample);
-	}
-
-#if 0
-	a_sample = (q_s[0])>>4;
-#else
-	a_sample += DAC_BIAS;							// Add bias level
-#endif 
-
-	// compute the output level from the data that's sent out to the PWM
-	
-	// Scale and clip output,
-	if (a_sample > DAC_RANGE) { // limit to the maximum value accepted by the PWM output 
-		a_sample = DAC_RANGE;
-		clip = true;
-	} else if (a_sample<0) { // it can't go below 0 because it will wrap go 0xFFFF
-		a_sample = 0;
-		clip = true;
-	}
-	// Send to audio DAC output
-	pwm_set_chan_level(dac_audio, PWM_CHAN_A, a_sample);
-
-	// signal loop end
-	gpio_put(15, false);
-	return true;
 }
+#endif
 
 /* 
  * CORE0: 
  * start up all DSP related data
  * 
  */
- void dsp_init(void) {
- 	// CORE1 high prio
+void dsp_init(void) {
+	// set CORE1 bus access to high prio 
  	bus_ctrl_hw->priority = BUSCTRL_BUS_PRIORITY_PROC1_BITS; // Set Core 1 prio high
 	
 	// GP15 is used to monitor the DSP loop
 	gpio_init(15);
 	gpio_set_dir(15, GPIO_OUT);
-	
+
 
 	/* Initialize DACs, default mode is free running, A and B pins are output */
 	gpio_set_function(22, GPIO_FUNC_PWM);			// GP22 is PWM for Audio DAC (Slice 3, Channel A)
@@ -381,45 +424,14 @@ bool repeating_timer_callback_core_1_rx(struct repeating_timer *t) {
 	
 	// create a timer pool for CORE1, alarm pool 2, max. 16 timers
 	alarm_pool_t *core1pool ;
-    core1pool = alarm_pool_create(2, 16) ;
+    core1pool = alarm_pool_create(1, 16) ;
 	// add the rx() code to that timer pool
 	struct repeating_timer timer_core_1;
 	alarm_pool_add_repeating_timer_us(core1pool, -DSP_US, 
         repeating_timer_callback_core_1_rx, NULL, &timer_core_1);
 
-	// Consider using alarm_pool_add_repeating_timer_us() for a core1 associated timer
-	// First create an alarm pool on core1: alarm_pool_create(HWalarm, Ntimers)
-	// For the core1 alarm pool don't use default HWalarm (usually 3) but e.g. 1
-	// Timer callback signals semaphore, while loop blocks on getting it
-    while(1) {
- 		// keep core 1 busy over here
- 		sleep_ms(1000);
+	// keep core 1 busy over here
+    while(1) { 		
+ 		sleep_ms(10000);
    }
 }
-
-/* 
- * CORE0: 
- * Initialize dsp context and spawn CORE1 process 
- *
- * Some CORE1 code parts should not run from Flash, but be loaded in SRAM at boot time
- * See platform.h for function qualifier macro's
- * for example: 
- * void __not_in_flash_func(funcname)(int arg1, float arg2)
- * {
- * }
- *
- * Need to set BUS_PRIORITY of Core 1 to high
- * #include bus_ctrl.h
- * bus_ctrl_hw->priority = BUSCTRL_BUS_PRIORITY_PROC1_BITS; // Set Core 1 prio high
- */
-
-
-#if 0
-void dsp_init()  {
-	
-
-
-    multicore_launch_core1(dsp_loop); // Start processing on core1
-	add_repeating_timer_us(-DSP_US, dsp_callback, NULL, &dsp_timer);
-}
-#endif

@@ -352,7 +352,7 @@ void hmi_evaluate(void) {
 		SI_SETFREQ(0, hmi_freq);
 		dsp_setmode(hmi_demod_index);
 		//dsp_setagc(2);
-		set_audio_gain(hmi_audio_gain);
+		dsp_set_audio_gain(hmi_audio_gain);
 
 		
 		// UI update done, clear the flag
@@ -413,7 +413,7 @@ void hmi_init(void) {
 	SI_SETFREQ(0, hmi_freq);
 	SI_SETPHASE(0, 1);
 	dsp_setmode(hmi_demod_index);	// initial USB demodulation
-	set_audio_gain(hmi_audio_gain);
+	dsp_set_audio_gain(hmi_audio_gain);
 	hmi_update = true;
 
 	// this will display some audio level and signal clipping inside the processing chain
