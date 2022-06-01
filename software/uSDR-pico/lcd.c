@@ -76,9 +76,12 @@ void lcd_putxy(uint8_t x, uint8_t y, uint8_t c) {
 }
 
 void lcd_writexy(uint8_t x, uint8_t y, uint8_t *s) {
-	__oledWriteString(&oled, 0, x, y, (char*)s, FONT_8x8, (int)0, (int)1);
+	__oledWriteString(&oled, 0, x, y, (char*)s, FONT_8x8, (int)0, (int)0);
 }
 
 void lcd_test(void) {
+}
 
+void lcd_refresh(void) {
+    __oledDumpBuffer(&oled, NULL);
 }

@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.13)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
-#set(PICO_DEFAULT_BINARY_TYPE copy_to_ram)
+set(PICO_DEFAULT_BINARY_TYPE copy_to_ram)
 
 # initalize pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)

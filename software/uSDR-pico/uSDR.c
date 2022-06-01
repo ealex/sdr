@@ -17,6 +17,7 @@
 #include <string.h>
 #include "pico/stdlib.h"
 #include "pico/sem.h"
+#include "pico/multicore.h"
 #include "hardware/i2c.h"
 #include "hardware/gpio.h"
 #include "hardware/timer.h"
@@ -88,7 +89,7 @@ int main() {
 	gpio_pull_up(I2C0_SCL);
 	
 	// i2c1 is used for the display and GPIO expanders
-	i2c_init(i2c1, 400*1000);
+	i2c_init(i2c1, 100*1000);
 	gpio_set_function(I2C1_SDA, GPIO_FUNC_I2C);
 	gpio_set_function(I2C1_SCL, GPIO_FUNC_I2C);
 	gpio_pull_up(I2C1_SDA);
@@ -97,7 +98,7 @@ int main() {
 
 	/* Initialize units */
 	si_init();										// VFO control unit
-	dsp_init();										// Signal processing unit
+	multicore_launch_core1(dsp_init);				// Signal processing unit on core 1
 	lcd_init();										// LCD output unit
 	hmi_init();										// HMI user inputs
 	

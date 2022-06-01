@@ -125,7 +125,8 @@ uint32_t hmi_band_startFreq[HMI_BAND_SELECT_MAX+1] = {
 };
 
 // set to true when it's time to refresh
-bool hmi_update;
+volatile bool hmi_update;
+char s[32];
 
 /*
  * Some macros
@@ -292,56 +293,60 @@ void hmi_gpio_callback(uint gpio, uint32_t events) {
  * This function is called regularly from the main loop.
  */
 void hmi_evaluate(void) {
-	char s[32];
 	// main update routine
 	if(true == hmi_update) { // update display only when required
 		//line 0: current frequency
-		sprintf(s, "F:%05u.%03uHz", (uint16_t)(hmi_freq/1000), (uint16_t)(hmi_freq%1000));
+		sprintf((char*)s, "F:%05u.%03uHz", (uint16_t)(hmi_freq/1000), (uint16_t)(hmi_freq%1000));
 		lcd_writexy(0,0, (uint8_t *)s);
 
 		//line 1: pointer to the curret frequency update step		
 		switch(hmi_freq_step_index) {
 			case 0:
-				sprintf(s, "         ^ ");
+				sprintf((char*)s, "         ^ ");
 				break;
 			case 1:
-				sprintf(s, "        ^  ");
+				sprintf((char*)s, "        ^  ");
 				break;
 			case 2:
-				sprintf(s, "      ^    ");
+				sprintf((char*)s, "      ^    ");
 				break;
 			case 3:
-				sprintf(s, "     ^     ");
+				sprintf((char*)s, "     ^     ");
 				break;
 			case 4:
-				sprintf(s, "    ^      ");
+				sprintf((char*)s, "    ^      ");
 				break;
 			case 5:
-				sprintf(s, "   ^       ");
+				sprintf((char*)s, "   ^       ");
 				break;
 			default:
-				sprintf(s, "ERROR!!!");
+				sprintf((char*)s, "ERROR!!!");
 				break;
 		}
 		lcd_writexy(0,1, (uint8_t *)s);
 
 		//line 2 : demodulation mode
-		sprintf(s, "Demod: %s", hmi_demod_type_list[hmi_demod_index]);
+		sprintf((char*)s, "Demod: %s", hmi_demod_type_list[hmi_demod_index]);
 		lcd_writexy(0,2, (uint8_t *)s);
 
 		//line 3 : audio gain
-		sprintf(s,"Ag: %04d", hmi_audio_gain);
+		sprintf((char*)s,"Ag: %04d", hmi_audio_gain);
 		lcd_writexy(0,3, (uint8_t *)s);
 
-		// line 4: inputMag
-		sprintf(s,"A:%04d D:%04d %c", dsp_getInputMag(),
-			dsp_getOutputMag(), dsp_getClip()?'*':' ');
-		lcd_writexy(0,4, (uint8_t *)s);
+		// line 4: rf band
+		sprintf((char*)s, "%s", hmi_band_text[hmi_bandSelect]);
+		lcd_writexy(0,4, (uint8_t *)s);	
 
-		// line 5: rf band
-		sprintf(s, "%s", hmi_band_text[hmi_bandSelect]);
-		lcd_writexy(0,5, (uint8_t *)s);
+		// line 5
+		// line 6
 
+		// line 7: signal levels and clipping
+		sprintf((char*)s,"A:%04d D:%04d %s  ", dsp_getInputMag(),
+			dsp_getOutputMag(), dsp_getClip()?"!!":"  ");
+		lcd_writexy(0,7, (uint8_t *)s);
+
+		// dump the new display data to the screen
+		lcd_refresh();
 
 		// Set parameters corresponding to latest entered option value
 		SI_SETFREQ(0, hmi_freq);
@@ -409,10 +414,10 @@ void hmi_init(void) {
 	SI_SETPHASE(0, 1);
 	dsp_setmode(hmi_demod_index);	// initial USB demodulation
 	set_audio_gain(hmi_audio_gain);
-	//dsp_setagc(hmi_sub[HMI_S_AGC]);	TODO	
-	//hmi_update = true;
+	hmi_update = true;
 
-	add_repeating_timer_us(-(1000000), hmi_timer_callback, NULL, &hmi_timer);
+	// this will display some audio level and signal clipping inside the processing chain
+	//add_repeating_timer_us(-(1000000), hmi_timer_callback, NULL, &hmi_timer);
 }
 
 /*

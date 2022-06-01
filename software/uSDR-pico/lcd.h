@@ -15,5 +15,6 @@ void lcd_curxy(uint8_t x, uint8_t y, bool on);
 void lcd_putxy(uint8_t x, uint8_t y, uint8_t c);
 void lcd_writexy(uint8_t x, uint8_t y, uint8_t *s);
 void lcd_test(void);
+void lcd_refresh(void);
 
 #endif

@@ -380,9 +380,9 @@ void si_init(void) {
 
 	// Output port settings for 3 clocks
 	data[0] = SI_CLK0_CTL;
-	data[1] = 0x4d;		// CLK0: INT, PLLA, nonINV, MS, 4mA
-	data[2] = 0x4d;		// CLK1: INT, PLLA, nonINV, MS, 4mA
-	data[3] = 0x6f;		// CLK2: INT, PLLB, nonINV, MS, 8mA
+	data[1] = 0x4f;		// CLK0: INT, PLLA, nonINV, MultiSynth 0, 8mA
+	data[2] = 0x4f;		// CLK1: INT, PLLA, nonINV, MultiSynth 1, 4mA
+	data[3] = 0xC0;		// CLK2: output disabled
 	i2c_write_blocking(i2c0, I2C_VFO, data, 4, false);
 
 	// Disable spread spectrum (startup state is undefined)	
@@ -395,9 +395,9 @@ void si_init(void) {
 	data[1] = 0xa0;
 	i2c_write_blocking(i2c0, I2C_VFO, data, 2, false);
 
-	// Enable all outputs	
+	// Enable only CLK0 and CLK1	
 	data[0] = SI_CLK_OE;
-	data[1] = 0x00;
+	data[1] = 0xFC;
 	i2c_write_blocking(i2c0, I2C_VFO, data, 2, false);
 }
 
